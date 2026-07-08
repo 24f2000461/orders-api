@@ -31,16 +31,6 @@ RATE_LIMIT_WINDOW_SECONDS = 10
 
 app = FastAPI(title="Orders API")
 
-# CORS: allow the grader's page to call this cross-origin.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
-
 # ---------------------------------------------------------------------------
 # Fixed catalog: orders 1..T
 # ---------------------------------------------------------------------------
@@ -172,6 +162,23 @@ async def rate_limit_middleware(request: Request, call_next):
         )
 
     return await call_next(request)
+
+
+# CORS added LAST so it becomes the OUTERMOST middleware layer (Starlette
+# builds the stack so the most-recently-added middleware wraps everything
+# added before it). This guarantees:
+#   - CORS headers are present on every response, including 429s from the
+#     rate limiter below.
+#   - CORS preflight (OPTIONS) requests are answered directly by
+#     CORSMiddleware before they ever reach the rate limiter.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 
 @app.get("/")
